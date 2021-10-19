@@ -1,74 +1,5 @@
 @import "./vars.css";
-@import url(https://fonts.googleapis.com/css?family=Exo:100);
 @import url("https://fonts.googleapis.com/css2?family=Inter:wght@200;400;700&family=JetBrains+Mono:wght@100;400;700&display=swap");
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
-
-/*Your Custom CSS Goes here*/
-
-/* Background data (Original source: https://subtlepatterns.com/grid-me/) */
-/* Animations */
-@-webkit-keyframes bg-scrolling-reverse {
-  100% {
-    background-position: 50px 50px;
-  }
-}
-@-moz-keyframes bg-scrolling-reverse {
-  100% {
-    background-position: 50px 50px;
-  }
-}
-@-o-keyframes bg-scrolling-reverse {
-  100% {
-    background-position: 50px 50px;
-  }
-}
-@keyframes bg-scrolling-reverse {
-  100% {
-    background-position: 50px 50px;
-  }
-}
-@-webkit-keyframes bg-scrolling {
-  0% {
-    background-position: 50px 50px;
-  }
-}
-@-moz-keyframes bg-scrolling {
-  0% {
-    background-position: 50px 50px;
-  }
-}
-@-o-keyframes bg-scrolling {
-  0% {
-    background-position: 50px 50px;
-  }
-}
-@keyframes bg-scrolling {
-  0% {
-    background-position: 50px 50px;
-  }
-}
-/* Main styles */
-body {
-  /* img size is 50x50 */
-  background: url("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADIAAAAyCAIAAACRXR/mAAAACXBIWXMAAAsTAAALEwEAmpwYAAAAIGNIUk0AAHolAACAgwAA+f8AAIDpAAB1MAAA6mAAADqYAAAXb5JfxUYAAABnSURBVHja7M5RDYAwDEXRDgmvEocnlrQS2SwUFST9uEfBGWs9c97nbGtDcquqiKhOImLs/UpuzVzWEi1atGjRokWLFi1atGjRokWLFi1atGjRokWLFi1af7Ukz8xWp8z8AAAA//8DAJ4LoEAAlL1nAAAAAElFTkSuQmCC")
-    repeat 0 0;
-  background-size: 25px 25px;
-  -webkit-animation: bg-scrolling-reverse 5s infinite;
-  /* Safari 4+ */
-  -moz-animation: bg-scrolling-reverse 5s infinite;
-  /* Fx 5+ */
-  -o-animation: bg-scrolling-reverse 5s infinite;
-  /* Opera 12+ */
-  animation: bg-scrolling-reverse 5s infinite;
-  /* IE 10+ */
-  -webkit-animation-timing-function: linear;
-  -moz-animation-timing-function: linear;
-  -o-animation-timing-function: linear;
-  animation-timing-function: linear;
-}
-
 /* @import "./bg-anim.css"; */
 
 :root {
@@ -198,7 +129,6 @@ p {
 }
 
 section .socials {
-  display: flex;
   margin-top: 2rem;
   margin-left: -1rem;
 }
@@ -206,19 +136,4 @@ section .socials {
 .copyright {
   color: var(--tertiary-text);
   font-size: 0.8rem;
-}
-
-h1 {
-  @apply text-4xl tracking-tighter mb-3 text-center lg:text-7xl;
-}
-
-h3 {
-  @apply text-2xl font-bold mb-3;
-}
-
-/* Syntax Highlighting*/
-
-body :not(pre) > code[class*="language-"],
-body pre[class*="language-"] {
-  @apply bg-gray-800;
 }
