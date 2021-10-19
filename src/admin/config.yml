@@ -12,6 +12,14 @@ public_folder: "/static/img"
 local_backend: true
 # publish_mode: editorial_workflow
 collections:
+  - label: "Artwork2"
+    name: "artwork2"
+    folder: "src/artworks"
+    widget: "image"
+    choose_url: true
+    media_library:
+      config:
+        multiple: true
   - label: "Artwork"
     name: "artwork"
     folder: "src/artworks"
