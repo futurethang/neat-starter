@@ -14,9 +14,11 @@ local_backend: true
 collections:
   - label: "Artwork2"
     name: "artwork2"
-    folder: "src/artworks"
     widget: "image"
     choose_url: true
+    files: []
+    fields:
+      - { label: "Title", name: "title", widget: "string" }
     media_library:
       config:
         multiple: true
