@@ -978,20 +978,28 @@ layout: default
           return;
         }
 
-        // Delay to ensure DOM is fully updated after x-show changes
-        setTimeout(() => {
-          this.destroyCharts();
-          this._createCharts();
-        }, 50);
+        // Use requestAnimationFrame to ensure DOM has fully painted after x-show
+        requestAnimationFrame(() => {
+          requestAnimationFrame(() => {
+            this.destroyCharts();
+            // Only create charts if container is visible (has dimensions)
+            const container = document.querySelector('.charts-grid');
+            if (container && container.offsetWidth > 0) {
+              this._createCharts();
+            }
+          });
+        });
       },
 
       _createCharts() {
-        const rollingAvg = this.drinkingData.map((_, i) => this.getRollingAvg(i));
+        try {
+          const rollingAvg = this.drinkingData.map((_, i) => this.getRollingAvg(i));
 
-        // Daily Chart
-        const dailyCtx = document.getElementById('dailyChart');
-        if (dailyCtx && dailyCtx.getContext) {
-          this.charts.daily = new Chart(dailyCtx, {
+          // Daily Chart
+          const dailyCanvas = document.getElementById('dailyChart');
+          const dailyCtx = dailyCanvas?.getContext?.('2d');
+          if (dailyCtx) {
+            this.charts.daily = new Chart(dailyCanvas, {
             type: 'bar',
             data: {
               labels: this.drinkingData.map(d => d.date.slice(5)),
@@ -1016,10 +1024,11 @@ layout: default
           });
         }
 
-        // Rolling Average Chart
-        const rollingCtx = document.getElementById('rollingChart');
-        if (rollingCtx && rollingCtx.getContext) {
-          this.charts.rolling = new Chart(rollingCtx, {
+          // Rolling Average Chart
+          const rollingCanvas = document.getElementById('rollingChart');
+          const rollingCtx = rollingCanvas?.getContext?.('2d');
+          if (rollingCtx) {
+            this.charts.rolling = new Chart(rollingCanvas, {
             type: 'line',
             data: {
               labels: this.drinkingData.map(d => d.date.slice(5)),
@@ -1051,9 +1060,10 @@ layout: default
           });
         }
 
-        const weeklyCtx = document.getElementById('weeklyChart');
-        if (weeklyCtx && weeklyCtx.getContext) {
-          this.charts.weekly = new Chart(weeklyCtx, {
+          const weeklyCanvas = document.getElementById('weeklyChart');
+          const weeklyCtx = weeklyCanvas?.getContext?.('2d');
+          if (weeklyCtx) {
+            this.charts.weekly = new Chart(weeklyCanvas, {
             type: 'bar',
             data: {
               labels: weeks.map(w => w.label),
@@ -1081,9 +1091,10 @@ layout: default
           distribution[key] = (distribution[key] || 0) + 1;
         });
 
-        const distCtx = document.getElementById('distributionChart');
-        if (distCtx && distCtx.getContext) {
-          this.charts.distribution = new Chart(distCtx, {
+          const distCanvas = document.getElementById('distributionChart');
+          const distCtx = distCanvas?.getContext?.('2d');
+          if (distCtx) {
+            this.charts.distribution = new Chart(distCanvas, {
             type: 'doughnut',
             data: {
               labels: Object.keys(distribution).map(d => `${d} units`),
@@ -1108,7 +1119,10 @@ layout: default
                 legend: { position: 'right' }
               }
             }
-          });
+            });
+          }
+        } catch (err) {
+          console.error('Chart creation error:', err);
         }
       },
 
