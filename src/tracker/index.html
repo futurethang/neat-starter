@@ -12,16 +12,8 @@ layout: default
 
   <!-- Sync Status Banner -->
   <div class="sync-banner" x-show="syncId" x-cloak>
-    <span class="sync-icon" :class="syncStatus">
-      <template x-if="syncStatus === 'synced'">●</template>
-      <template x-if="syncStatus === 'syncing'">↻</template>
-      <template x-if="syncStatus === 'error'">!</template>
-    </span>
-    <span class="sync-text">
-      <template x-if="syncStatus === 'synced'">Synced to cloud</template>
-      <template x-if="syncStatus === 'syncing'">Syncing...</template>
-      <template x-if="syncStatus === 'error'">Sync error - click to retry</template>
-    </span>
+    <span class="sync-icon" :class="syncStatus" x-text="syncStatus === 'synced' ? '●' : (syncStatus === 'syncing' ? '↻' : '!')"></span>
+    <span class="sync-text" x-text="syncStatus === 'synced' ? 'Synced to cloud' : (syncStatus === 'syncing' ? 'Syncing...' : 'Sync error - click to retry')"></span>
     <button @click="pullFromCloud()" class="sync-refresh" title="Pull latest from cloud">↓</button>
   </div>
 
