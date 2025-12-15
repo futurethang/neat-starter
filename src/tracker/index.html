@@ -980,14 +980,14 @@ layout: default
       },
 
       renderCharts() {
-        this.destroyCharts();
-
         if (this.drinkingData.length === 0) {
+          this.destroyCharts();
           return;
         }
 
-        // Small delay to ensure Alpine has updated the DOM
+        // Destroy and recreate in same tick to avoid race conditions
         this.$nextTick(() => {
+          this.destroyCharts();
           this._createCharts();
         });
       },
