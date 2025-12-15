@@ -1,0 +1,447 @@
+---
+title: Alcohol Unit Calculator
+layout: default
+---
+
+<div class="calculator-page">
+  <h2>Alcohol Unit Calculator</h2>
+  <p>Calculate standard alcohol units based on drink volume and ABV. In the US, one standard drink contains 0.6 oz of pure alcohol (equivalent to 12 oz of 5% beer).</p>
+
+  <div x-data="alcoholCalculator()" class="calculator">
+
+    <!-- Quick Presets -->
+    <div class="calc-section">
+      <h3>Quick Add</h3>
+      <p class="help-text">Click a preset to add it to your total</p>
+      <div class="presets-grid">
+        <template x-for="preset in presets" :key="preset.name">
+          <button
+            @click="addPreset(preset)"
+            class="preset-btn"
+            :title="`${preset.oz} oz at ${preset.abv}% ABV`"
+          >
+            <span class="preset-icon" x-text="preset.icon"></span>
+            <span class="preset-name" x-text="preset.name"></span>
+            <span class="preset-detail" x-text="`${preset.oz}oz / ${preset.abv}%`"></span>
+          </button>
+        </template>
+      </div>
+    </div>
+
+    <!-- Custom Entry -->
+    <div class="calc-section">
+      <h3>Custom Drink</h3>
+      <div class="input-row">
+        <div class="input-group">
+          <label for="ounces">Ounces</label>
+          <input
+            type="number"
+            id="ounces"
+            x-model.number="ounces"
+            min="0"
+            step="0.5"
+            placeholder="12"
+          >
+        </div>
+        <div class="input-group">
+          <label for="abv">ABV %</label>
+          <input
+            type="number"
+            id="abv"
+            x-model.number="abv"
+            min="0"
+            max="100"
+            step="0.1"
+            placeholder="5"
+          >
+        </div>
+        <button @click="addCustom()" class="add-btn" :disabled="!ounces || !abv">
+          Add
+        </button>
+      </div>
+
+      <!-- Live calculation preview -->
+      <div class="preview" x-show="ounces > 0 && abv > 0">
+        <span>= <strong x-text="calculateUnits(ounces, abv).toFixed(2)"></strong> standard units</span>
+      </div>
+    </div>
+
+    <!-- Drink Log -->
+    <div class="calc-section" x-show="drinks.length > 0">
+      <h3>Drinks Added</h3>
+      <ul class="drink-list">
+        <template x-for="(drink, index) in drinks" :key="index">
+          <li class="drink-item">
+            <span class="drink-info">
+              <span x-text="drink.name"></span>
+              <span class="drink-detail" x-text="`(${drink.oz}oz @ ${drink.abv}%)`"></span>
+            </span>
+            <span class="drink-units" x-text="`${drink.units.toFixed(2)} units`"></span>
+            <button @click="removeDrink(index)" class="remove-btn" title="Remove">&times;</button>
+          </li>
+        </template>
+      </ul>
+      <button @click="clearAll()" class="clear-btn">Clear All</button>
+    </div>
+
+    <!-- Total -->
+    <div class="calc-section total-section" x-show="drinks.length > 0">
+      <div class="total-display">
+        <span class="total-label">Total Standard Units:</span>
+        <span class="total-value" x-text="totalUnits.toFixed(2)"></span>
+      </div>
+      <p class="total-context" x-show="totalUnits > 0">
+        <span x-text="`That's equivalent to ${(totalUnits).toFixed(1)} regular beers (12oz, 5%)`"></span>
+      </p>
+    </div>
+
+    <!-- Info -->
+    <div class="calc-section info-section">
+      <h3>Reference</h3>
+      <p>One US standard drink equals:</p>
+      <ul class="reference-list">
+        <li>12 oz of 5% beer</li>
+        <li>5 oz of 12% wine</li>
+        <li>1.5 oz of 40% spirits</li>
+      </ul>
+      <p class="formula">Formula: (ounces &times; ABV%) &divide; 60 = standard units</p>
+    </div>
+  </div>
+</div>
+
+<style>
+  .calculator-page {
+    max-width: 600px;
+  }
+
+  .calculator-page h2 {
+    margin-top: 0;
+  }
+
+  .calculator {
+    margin-top: 2rem;
+  }
+
+  .calc-section {
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 8px;
+    padding: 1.5rem;
+    margin-bottom: 1rem;
+  }
+
+  .calc-section h3 {
+    margin-top: 0;
+    margin-bottom: 0.5rem;
+    font-size: 1rem;
+    color: var(--cyan-300);
+  }
+
+  .help-text {
+    font-size: 0.85rem;
+    margin-bottom: 1rem;
+    opacity: 0.7;
+  }
+
+  /* Presets Grid */
+  .presets-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    gap: 0.5rem;
+  }
+
+  .preset-btn {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 0.75rem;
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 6px;
+    color: var(--gray-100);
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .preset-btn:hover {
+    background: rgba(255, 255, 255, 0.2);
+    border-color: var(--cyan-400);
+  }
+
+  .preset-icon {
+    font-size: 1.5rem;
+    margin-bottom: 0.25rem;
+  }
+
+  .preset-name {
+    font-size: 0.85rem;
+    font-weight: 600;
+  }
+
+  .preset-detail {
+    font-size: 0.7rem;
+    opacity: 0.7;
+  }
+
+  /* Input Row */
+  .input-row {
+    display: flex;
+    gap: 1rem;
+    align-items: flex-end;
+  }
+
+  .input-group {
+    flex: 1;
+  }
+
+  .input-group label {
+    display: block;
+    font-size: 0.85rem;
+    color: var(--gray-300);
+    margin-bottom: 0.25rem;
+  }
+
+  .input-group input {
+    width: 100%;
+    padding: 0.5rem;
+    background: rgba(0, 0, 0, 0.3);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 4px;
+    color: var(--gray-100);
+    font-size: 1rem;
+  }
+
+  .input-group input:focus {
+    outline: none;
+    border-color: var(--cyan-400);
+  }
+
+  .add-btn {
+    padding: 0.5rem 1.5rem;
+    background: var(--cyan-600);
+    border: none;
+    border-radius: 4px;
+    color: white;
+    cursor: pointer;
+    font-weight: 600;
+    transition: background 0.2s;
+  }
+
+  .add-btn:hover:not(:disabled) {
+    background: var(--cyan-500);
+  }
+
+  .add-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  .preview {
+    margin-top: 0.75rem;
+    padding: 0.5rem;
+    background: rgba(57, 167, 198, 0.2);
+    border-radius: 4px;
+    font-size: 0.9rem;
+    color: var(--cyan-200);
+  }
+
+  /* Drink List */
+  .drink-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+  }
+
+  .drink-item {
+    display: flex;
+    align-items: center;
+    padding: 0.5rem;
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 4px;
+    margin-bottom: 0.5rem;
+  }
+
+  .drink-info {
+    flex: 1;
+  }
+
+  .drink-detail {
+    font-size: 0.8rem;
+    opacity: 0.7;
+    margin-left: 0.5rem;
+  }
+
+  .drink-units {
+    font-weight: 600;
+    color: var(--cyan-300);
+    margin-right: 0.5rem;
+  }
+
+  .remove-btn {
+    background: transparent;
+    border: none;
+    color: var(--red-400);
+    font-size: 1.25rem;
+    cursor: pointer;
+    padding: 0 0.5rem;
+    line-height: 1;
+  }
+
+  .remove-btn:hover {
+    color: var(--red-300);
+  }
+
+  .clear-btn {
+    margin-top: 0.5rem;
+    padding: 0.25rem 0.75rem;
+    background: transparent;
+    border: 1px solid var(--red-400);
+    border-radius: 4px;
+    color: var(--red-400);
+    cursor: pointer;
+    font-size: 0.85rem;
+  }
+
+  .clear-btn:hover {
+    background: var(--red-400);
+    color: white;
+  }
+
+  /* Total */
+  .total-section {
+    background: rgba(57, 167, 198, 0.15);
+    border: 1px solid var(--cyan-600);
+  }
+
+  .total-display {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .total-label {
+    font-size: 1.1rem;
+    color: var(--gray-100);
+  }
+
+  .total-value {
+    font-size: 2rem;
+    font-weight: 700;
+    color: var(--cyan-300);
+    font-family: "JetBrains Mono", monospace;
+  }
+
+  .total-context {
+    margin-top: 0.5rem;
+    font-size: 0.85rem;
+    opacity: 0.8;
+  }
+
+  /* Info Section */
+  .info-section {
+    background: rgba(0, 0, 0, 0.2);
+  }
+
+  .reference-list {
+    padding-left: 1.5rem;
+    margin: 0.5rem 0;
+  }
+
+  .reference-list li {
+    color: var(--gray-200);
+    font-size: 0.9rem;
+    margin-bottom: 0.25rem;
+  }
+
+  .formula {
+    font-family: "JetBrains Mono", monospace;
+    font-size: 0.85rem;
+    color: var(--gray-400);
+    margin-top: 1rem;
+  }
+
+  @media (max-width: 500px) {
+    .input-row {
+      flex-wrap: wrap;
+    }
+
+    .input-group {
+      min-width: calc(50% - 0.5rem);
+    }
+
+    .add-btn {
+      width: 100%;
+      margin-top: 0.5rem;
+    }
+
+    .presets-grid {
+      grid-template-columns: repeat(2, 1fr);
+    }
+  }
+</style>
+
+<script>
+  function alcoholCalculator() {
+    return {
+      ounces: null,
+      abv: null,
+      drinks: [],
+
+      presets: [
+        { name: 'Regular Beer', oz: 12, abv: 5, icon: '🍺' },
+        { name: 'Light Beer', oz: 12, abv: 4.2, icon: '🍻' },
+        { name: 'IPA', oz: 12, abv: 6.5, icon: '🍺' },
+        { name: 'Imperial Pint', oz: 20, abv: 5, icon: '🍺' },
+        { name: 'Wine Glass', oz: 5, abv: 12, icon: '🍷' },
+        { name: 'Wine (large)', oz: 8, abv: 12, icon: '🍷' },
+        { name: 'Shot', oz: 1.5, abv: 40, icon: '🥃' },
+        { name: 'Double Shot', oz: 3, abv: 40, icon: '🥃' },
+        { name: 'Cocktail', oz: 4, abv: 15, icon: '🍸' },
+        { name: 'Margarita', oz: 6, abv: 13, icon: '🍹' },
+        { name: 'Hard Seltzer', oz: 12, abv: 5, icon: '🥤' },
+        { name: 'Cider', oz: 12, abv: 5, icon: '🍎' },
+      ],
+
+      calculateUnits(oz, abv) {
+        // Standard US drink = 0.6 oz pure alcohol
+        // Formula: (oz * abv%) / 60 = standard units
+        return (oz * abv) / 60;
+      },
+
+      get totalUnits() {
+        return this.drinks.reduce((sum, drink) => sum + drink.units, 0);
+      },
+
+      addPreset(preset) {
+        const units = this.calculateUnits(preset.oz, preset.abv);
+        this.drinks.push({
+          name: preset.name,
+          oz: preset.oz,
+          abv: preset.abv,
+          units: units
+        });
+      },
+
+      addCustom() {
+        if (this.ounces && this.abv) {
+          const units = this.calculateUnits(this.ounces, this.abv);
+          this.drinks.push({
+            name: 'Custom drink',
+            oz: this.ounces,
+            abv: this.abv,
+            units: units
+          });
+          this.ounces = null;
+          this.abv = null;
+        }
+      },
+
+      removeDrink(index) {
+        this.drinks.splice(index, 1);
+      },
+
+      clearAll() {
+        this.drinks = [];
+      }
+    };
+  }
+</script>
