@@ -979,11 +979,18 @@ layout: default
 
         if (this.drinkingData.length === 0) return;
 
+        // Delay to ensure DOM is fully updated after x-show changes
+        setTimeout(() => {
+          this._createCharts();
+        }, 50);
+      },
+
+      _createCharts() {
         const rollingAvg = this.drinkingData.map((_, i) => this.getRollingAvg(i));
 
         // Daily Chart
         const dailyCtx = document.getElementById('dailyChart');
-        if (dailyCtx) {
+        if (dailyCtx && dailyCtx.getContext) {
           this.charts.daily = new Chart(dailyCtx, {
             type: 'bar',
             data: {
@@ -1011,7 +1018,7 @@ layout: default
 
         // Rolling Average Chart
         const rollingCtx = document.getElementById('rollingChart');
-        if (rollingCtx) {
+        if (rollingCtx && rollingCtx.getContext) {
           this.charts.rolling = new Chart(rollingCtx, {
             type: 'line',
             data: {
@@ -1045,7 +1052,7 @@ layout: default
         }
 
         const weeklyCtx = document.getElementById('weeklyChart');
-        if (weeklyCtx) {
+        if (weeklyCtx && weeklyCtx.getContext) {
           this.charts.weekly = new Chart(weeklyCtx, {
             type: 'bar',
             data: {
@@ -1075,7 +1082,7 @@ layout: default
         });
 
         const distCtx = document.getElementById('distributionChart');
-        if (distCtx) {
+        if (distCtx && distCtx.getContext) {
           this.charts.distribution = new Chart(distCtx, {
             type: 'doughnut',
             data: {
