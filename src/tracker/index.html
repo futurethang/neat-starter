@@ -1,0 +1,721 @@
+---
+title: Drinking Tracker
+layout: default
+---
+
+<div class="tracker-page" x-data="drinkingTracker()" x-init="init()">
+  <div class="tracker-header">
+    <h2>Drinking Tracker</h2>
+    <p>Track your drinking patterns over time</p>
+    <p class="calc-link"><a href="{{ '/tools' | url }}">← Back to Unit Calculator</a></p>
+  </div>
+
+  <!-- Stats Cards -->
+  <div class="stats-grid">
+    <div class="stat-card">
+      <div class="stat-label">Days Tracked</div>
+      <div class="stat-value" x-text="stats.totalDays"></div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Average</div>
+      <div class="stat-value" x-text="stats.avgDrinks.toFixed(1)"></div>
+      <div class="stat-sub">units/day</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Last 7 Days</div>
+      <div class="stat-value" x-text="stats.last7Avg.toFixed(1)"></div>
+      <div class="stat-sub" :class="stats.change < 0 ? 'positive' : 'negative'">
+        <span x-text="(stats.change > 0 ? '+' : '') + stats.change.toFixed(1)"></span>
+        vs first week
+      </div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Days ≤4 Units</div>
+      <div class="stat-value" x-text="stats.targetDays"></div>
+      <div class="stat-sub positive" x-text="stats.targetPercent.toFixed(0) + '% of days'"></div>
+    </div>
+  </div>
+
+  <!-- Quick Add -->
+  <div class="tracker-section">
+    <h3>Quick Add Entry</h3>
+    <div class="quick-add-form">
+      <div class="input-group">
+        <label for="addDate">Date</label>
+        <input type="date" id="addDate" x-model="newEntry.date">
+      </div>
+      <div class="input-group">
+        <label for="addDrinks">Units</label>
+        <input type="number" id="addDrinks" x-model.number="newEntry.drinks" min="0" step="0.5" placeholder="5">
+      </div>
+      <div class="input-group">
+        <label for="addNote">Note</label>
+        <input type="text" id="addNote" x-model="newEntry.note" placeholder="optional">
+      </div>
+      <button @click="addEntry()" class="add-btn">Add</button>
+    </div>
+  </div>
+
+  <!-- Charts -->
+  <div class="charts-grid" x-show="drinkingData.length > 0">
+    <div class="tracker-section chart-section">
+      <h3>Daily Pattern</h3>
+      <canvas id="dailyChart"></canvas>
+    </div>
+    <div class="tracker-section chart-section">
+      <h3>7-Day Rolling Average</h3>
+      <canvas id="rollingChart"></canvas>
+    </div>
+    <div class="tracker-section chart-section">
+      <h3>Weekly Averages</h3>
+      <canvas id="weeklyChart"></canvas>
+    </div>
+    <div class="tracker-section chart-section">
+      <h3>Distribution</h3>
+      <canvas id="distributionChart"></canvas>
+    </div>
+  </div>
+
+  <!-- Data Table -->
+  <div class="tracker-section" x-show="drinkingData.length > 0">
+    <h3>History</h3>
+    <div class="data-table-wrapper">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Date</th>
+            <th>Day</th>
+            <th>Units</th>
+            <th>Note</th>
+            <th>7-Day Avg</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          <template x-for="(entry, index) in [...drinkingData].reverse()" :key="entry.date">
+            <tr :class="isWeekend(entry.date) ? 'weekend' : ''">
+              <td x-text="entry.date"></td>
+              <td x-text="getDayOfWeek(entry.date)"></td>
+              <td><strong x-text="entry.drinks"></strong></td>
+              <td class="note-cell" x-text="entry.note || '-'"></td>
+              <td x-text="getRollingAvg(drinkingData.length - 1 - index).toFixed(1)"></td>
+              <td>
+                <button @click="deleteEntry(drinkingData.length - 1 - index)" class="delete-btn" title="Delete">×</button>
+              </td>
+            </tr>
+          </template>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Empty State -->
+  <div class="empty-state" x-show="drinkingData.length === 0">
+    <p>No data yet. Add entries above or <a href="{{ '/tools' | url }}">use the calculator</a> to log drinks.</p>
+  </div>
+
+  <!-- Import/Export -->
+  <div class="tracker-section import-export">
+    <h3>Data Management</h3>
+    <div class="ie-buttons">
+      <button @click="exportData()" class="export-btn">Export JSON</button>
+      <label class="import-btn">
+        Import JSON
+        <input type="file" accept=".json" @change="importData($event)" style="display:none">
+      </label>
+      <button @click="clearAllData()" class="clear-all-btn">Clear All Data</button>
+    </div>
+    <p class="ie-note">Data is stored in your browser's localStorage. Export regularly for backup.</p>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<style>
+  .tracker-page {
+    max-width: 900px;
+  }
+
+  .tracker-header {
+    margin-bottom: 2rem;
+  }
+
+  .tracker-header h2 {
+    margin-top: 0;
+  }
+
+  .calc-link {
+    margin-top: 0.5rem;
+  }
+
+  .calc-link a {
+    color: var(--cyan-300);
+  }
+
+  /* Stats Grid */
+  .stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+  }
+
+  .stat-card {
+    background: rgba(255, 255, 255, 0.05);
+    padding: 1.25rem;
+    border-radius: 8px;
+    text-align: center;
+  }
+
+  .stat-label {
+    color: var(--gray-400);
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 0.5rem;
+  }
+
+  .stat-value {
+    font-size: 2rem;
+    font-weight: 700;
+    color: var(--gray-100);
+    font-family: "JetBrains Mono", monospace;
+  }
+
+  .stat-sub {
+    font-size: 0.85rem;
+    color: var(--gray-400);
+    margin-top: 0.25rem;
+  }
+
+  .stat-sub.positive { color: var(--green-400); }
+  .stat-sub.negative { color: var(--red-400); }
+
+  /* Sections */
+  .tracker-section {
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 8px;
+    padding: 1.5rem;
+    margin-bottom: 1rem;
+  }
+
+  .tracker-section h3 {
+    margin-top: 0;
+    margin-bottom: 1rem;
+    font-size: 1rem;
+    color: var(--cyan-300);
+  }
+
+  /* Quick Add Form */
+  .quick-add-form {
+    display: flex;
+    gap: 1rem;
+    align-items: flex-end;
+    flex-wrap: wrap;
+  }
+
+  .input-group {
+    flex: 1;
+    min-width: 100px;
+  }
+
+  .input-group label {
+    display: block;
+    font-size: 0.85rem;
+    color: var(--gray-300);
+    margin-bottom: 0.25rem;
+  }
+
+  .input-group input {
+    width: 100%;
+    padding: 0.5rem;
+    background: rgba(0, 0, 0, 0.3);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 4px;
+    color: var(--gray-100);
+    font-size: 1rem;
+  }
+
+  .input-group input:focus {
+    outline: none;
+    border-color: var(--cyan-400);
+  }
+
+  .add-btn {
+    padding: 0.5rem 1.5rem;
+    background: var(--cyan-600);
+    border: none;
+    border-radius: 4px;
+    color: white;
+    cursor: pointer;
+    font-weight: 600;
+  }
+
+  .add-btn:hover {
+    background: var(--cyan-500);
+  }
+
+  /* Charts */
+  .charts-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+    gap: 1rem;
+    margin-bottom: 1rem;
+  }
+
+  .chart-section {
+    min-height: 300px;
+  }
+
+  .chart-section canvas {
+    max-height: 250px;
+  }
+
+  /* Data Table */
+  .data-table-wrapper {
+    max-height: 400px;
+    overflow-y: auto;
+  }
+
+  .data-table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+
+  .data-table th {
+    text-align: left;
+    padding: 0.75rem;
+    border-bottom: 2px solid rgba(255, 255, 255, 0.1);
+    color: var(--gray-400);
+    font-weight: 600;
+    font-size: 0.85rem;
+    position: sticky;
+    top: 0;
+    background: rgba(23, 39, 79, 0.98);
+  }
+
+  .data-table td {
+    padding: 0.5rem 0.75rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    color: var(--gray-200);
+  }
+
+  .data-table tr:hover {
+    background: rgba(255, 255, 255, 0.03);
+  }
+
+  .data-table tr.weekend {
+    background: rgba(251, 191, 36, 0.1);
+  }
+
+  .note-cell {
+    font-size: 0.85rem;
+    color: var(--orange-300);
+    font-style: italic;
+    max-width: 150px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .delete-btn {
+    background: transparent;
+    border: none;
+    color: var(--red-400);
+    font-size: 1.25rem;
+    cursor: pointer;
+    padding: 0 0.5rem;
+    opacity: 0.5;
+  }
+
+  .delete-btn:hover {
+    opacity: 1;
+  }
+
+  /* Empty State */
+  .empty-state {
+    text-align: center;
+    padding: 3rem;
+    background: rgba(255, 255, 255, 0.03);
+    border-radius: 8px;
+  }
+
+  .empty-state a {
+    color: var(--cyan-300);
+  }
+
+  /* Import/Export */
+  .import-export {
+    background: rgba(0, 0, 0, 0.2);
+  }
+
+  .ie-buttons {
+    display: flex;
+    gap: 1rem;
+    flex-wrap: wrap;
+  }
+
+  .export-btn, .import-btn {
+    padding: 0.5rem 1rem;
+    background: var(--indigo-600);
+    border: none;
+    border-radius: 4px;
+    color: white;
+    cursor: pointer;
+    font-weight: 500;
+    font-size: 0.9rem;
+  }
+
+  .export-btn:hover, .import-btn:hover {
+    background: var(--indigo-500);
+  }
+
+  .clear-all-btn {
+    padding: 0.5rem 1rem;
+    background: transparent;
+    border: 1px solid var(--red-400);
+    border-radius: 4px;
+    color: var(--red-400);
+    cursor: pointer;
+    font-size: 0.9rem;
+  }
+
+  .clear-all-btn:hover {
+    background: var(--red-400);
+    color: white;
+  }
+
+  .ie-note {
+    margin-top: 1rem;
+    font-size: 0.85rem;
+    color: var(--gray-400);
+  }
+
+  @media (max-width: 600px) {
+    .charts-grid {
+      grid-template-columns: 1fr;
+    }
+
+    .stats-grid {
+      grid-template-columns: repeat(2, 1fr);
+    }
+
+    .quick-add-form {
+      flex-direction: column;
+    }
+
+    .input-group {
+      width: 100%;
+    }
+
+    .add-btn {
+      width: 100%;
+    }
+  }
+</style>
+
+<script>
+  const STORAGE_KEY = 'drinkingTrackerData';
+
+  function getStoredData() {
+    try {
+      const data = localStorage.getItem(STORAGE_KEY);
+      return data ? JSON.parse(data) : [];
+    } catch (e) {
+      return [];
+    }
+  }
+
+  function saveStoredData(data) {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+  }
+
+  function drinkingTracker() {
+    return {
+      drinkingData: [],
+      charts: {},
+      newEntry: {
+        date: new Date().toISOString().split('T')[0],
+        drinks: null,
+        note: ''
+      },
+
+      init() {
+        this.drinkingData = getStoredData();
+        this.$nextTick(() => {
+          if (this.drinkingData.length > 0) {
+            this.renderCharts();
+          }
+        });
+      },
+
+      get stats() {
+        if (this.drinkingData.length === 0) {
+          return {
+            totalDays: 0,
+            avgDrinks: 0,
+            last7Avg: 0,
+            change: 0,
+            targetDays: 0,
+            targetPercent: 0
+          };
+        }
+
+        const totalDrinks = this.drinkingData.reduce((sum, d) => sum + d.drinks, 0);
+        const avgDrinks = totalDrinks / this.drinkingData.length;
+
+        const first7 = this.drinkingData.slice(0, 7);
+        const last7 = this.drinkingData.slice(-7);
+        const first7Avg = first7.reduce((sum, d) => sum + d.drinks, 0) / first7.length;
+        const last7Avg = last7.reduce((sum, d) => sum + d.drinks, 0) / last7.length;
+
+        const targetDays = this.drinkingData.filter(d => d.drinks <= 4).length;
+
+        return {
+          totalDays: this.drinkingData.length,
+          avgDrinks,
+          last7Avg,
+          change: last7Avg - first7Avg,
+          targetDays,
+          targetPercent: (targetDays / this.drinkingData.length) * 100
+        };
+      },
+
+      getDayOfWeek(dateStr) {
+        const date = new Date(dateStr + 'T12:00:00');
+        return ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][date.getDay()];
+      },
+
+      isWeekend(dateStr) {
+        const date = new Date(dateStr + 'T12:00:00');
+        const day = date.getDay();
+        return day === 0 || day === 6;
+      },
+
+      getRollingAvg(index) {
+        const start = Math.max(0, index - 6);
+        const subset = this.drinkingData.slice(start, index + 1);
+        return subset.reduce((sum, d) => sum + d.drinks, 0) / subset.length;
+      },
+
+      addEntry() {
+        if (!this.newEntry.date || this.newEntry.drinks === null) return;
+
+        const existingIndex = this.drinkingData.findIndex(d => d.date === this.newEntry.date);
+
+        if (existingIndex >= 0) {
+          this.drinkingData[existingIndex].drinks = this.newEntry.drinks;
+          this.drinkingData[existingIndex].note = this.newEntry.note;
+        } else {
+          this.drinkingData.push({
+            date: this.newEntry.date,
+            drinks: this.newEntry.drinks,
+            note: this.newEntry.note
+          });
+        }
+
+        this.drinkingData.sort((a, b) => new Date(a.date) - new Date(b.date));
+        saveStoredData(this.drinkingData);
+
+        this.newEntry.drinks = null;
+        this.newEntry.note = '';
+
+        this.$nextTick(() => this.renderCharts());
+      },
+
+      deleteEntry(index) {
+        if (confirm('Delete this entry?')) {
+          this.drinkingData.splice(index, 1);
+          saveStoredData(this.drinkingData);
+          this.$nextTick(() => this.renderCharts());
+        }
+      },
+
+      destroyCharts() {
+        Object.values(this.charts).forEach(chart => chart.destroy());
+        this.charts = {};
+      },
+
+      renderCharts() {
+        this.destroyCharts();
+
+        if (this.drinkingData.length === 0) return;
+
+        const rollingAvg = this.drinkingData.map((_, i) => this.getRollingAvg(i));
+
+        // Daily Chart
+        const dailyCtx = document.getElementById('dailyChart');
+        if (dailyCtx) {
+          this.charts.daily = new Chart(dailyCtx, {
+            type: 'bar',
+            data: {
+              labels: this.drinkingData.map(d => d.date.slice(5)),
+              datasets: [{
+                label: 'Units',
+                data: this.drinkingData.map(d => d.drinks),
+                backgroundColor: this.drinkingData.map(d =>
+                  this.isWeekend(d.date) ? 'rgba(251, 146, 60, 0.6)' : 'rgba(99, 102, 241, 0.6)'
+                ),
+                borderColor: this.drinkingData.map(d =>
+                  this.isWeekend(d.date) ? 'rgb(251, 146, 60)' : 'rgb(99, 102, 241)'
+                ),
+                borderWidth: 1
+              }]
+            },
+            options: {
+              responsive: true,
+              maintainAspectRatio: false,
+              plugins: { legend: { display: false } },
+              scales: { y: { beginAtZero: true } }
+            }
+          });
+        }
+
+        // Rolling Average Chart
+        const rollingCtx = document.getElementById('rollingChart');
+        if (rollingCtx) {
+          this.charts.rolling = new Chart(rollingCtx, {
+            type: 'line',
+            data: {
+              labels: this.drinkingData.map(d => d.date.slice(5)),
+              datasets: [{
+                label: '7-Day Average',
+                data: rollingAvg,
+                borderColor: 'rgb(34, 197, 94)',
+                backgroundColor: 'rgba(34, 197, 94, 0.1)',
+                tension: 0.4,
+                fill: true
+              }]
+            },
+            options: {
+              responsive: true,
+              maintainAspectRatio: false,
+              plugins: { legend: { display: false } },
+              scales: { y: { beginAtZero: true } }
+            }
+          });
+        }
+
+        // Weekly Chart
+        const weeks = [];
+        for (let i = 0; i < this.drinkingData.length; i += 7) {
+          const week = this.drinkingData.slice(i, Math.min(i + 7, this.drinkingData.length));
+          weeks.push({
+            label: `Week ${Math.floor(i / 7) + 1}`,
+            avg: week.reduce((sum, d) => sum + d.drinks, 0) / week.length
+          });
+        }
+
+        const weeklyCtx = document.getElementById('weeklyChart');
+        if (weeklyCtx) {
+          this.charts.weekly = new Chart(weeklyCtx, {
+            type: 'bar',
+            data: {
+              labels: weeks.map(w => w.label),
+              datasets: [{
+                label: 'Weekly Average',
+                data: weeks.map(w => w.avg),
+                backgroundColor: 'rgba(168, 85, 247, 0.6)',
+                borderColor: 'rgb(168, 85, 247)',
+                borderWidth: 1
+              }]
+            },
+            options: {
+              responsive: true,
+              maintainAspectRatio: false,
+              plugins: { legend: { display: false } },
+              scales: { y: { beginAtZero: true } }
+            }
+          });
+        }
+
+        // Distribution Chart
+        const distribution = {};
+        this.drinkingData.forEach(d => {
+          const key = Math.round(d.drinks);
+          distribution[key] = (distribution[key] || 0) + 1;
+        });
+
+        const distCtx = document.getElementById('distributionChart');
+        if (distCtx) {
+          this.charts.distribution = new Chart(distCtx, {
+            type: 'doughnut',
+            data: {
+              labels: Object.keys(distribution).map(d => `${d} units`),
+              datasets: [{
+                data: Object.values(distribution),
+                backgroundColor: [
+                  'rgba(34, 197, 94, 0.6)',
+                  'rgba(99, 102, 241, 0.6)',
+                  'rgba(244, 114, 182, 0.6)',
+                  'rgba(251, 146, 60, 0.6)',
+                  'rgba(163, 230, 53, 0.6)',
+                  'rgba(239, 68, 68, 0.6)',
+                  'rgba(168, 85, 247, 0.6)',
+                  'rgba(56, 189, 248, 0.6)'
+                ]
+              }]
+            },
+            options: {
+              responsive: true,
+              maintainAspectRatio: false,
+              plugins: {
+                legend: { position: 'right' }
+              }
+            }
+          });
+        }
+      },
+
+      exportData() {
+        const dataStr = JSON.stringify(this.drinkingData, null, 2);
+        const blob = new Blob([dataStr], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `drinking-tracker-${new Date().toISOString().split('T')[0]}.json`;
+        a.click();
+        URL.revokeObjectURL(url);
+      },
+
+      importData(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          try {
+            const imported = JSON.parse(e.target.result);
+            if (Array.isArray(imported)) {
+              if (confirm(`Import ${imported.length} entries? This will merge with existing data.`)) {
+                imported.forEach(entry => {
+                  const existing = this.drinkingData.findIndex(d => d.date === entry.date);
+                  if (existing >= 0) {
+                    this.drinkingData[existing] = entry;
+                  } else {
+                    this.drinkingData.push(entry);
+                  }
+                });
+                this.drinkingData.sort((a, b) => new Date(a.date) - new Date(b.date));
+                saveStoredData(this.drinkingData);
+                this.$nextTick(() => this.renderCharts());
+              }
+            }
+          } catch (err) {
+            alert('Error reading file: ' + err.message);
+          }
+        };
+        reader.readAsText(file);
+        event.target.value = '';
+      },
+
+      clearAllData() {
+        if (confirm('Delete ALL tracking data? This cannot be undone.')) {
+          this.drinkingData = [];
+          saveStoredData([]);
+          this.destroyCharts();
+        }
+      }
+    };
+  }
+</script>

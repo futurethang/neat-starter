@@ -6,5 +6,7 @@ items:
     url: "/about"
   - text: Blog
     url: "/blog"
-  - text: Tools
+  - text: Calculator
     url: "/tools"
+  - text: Tracker
+    url: "/tracker"

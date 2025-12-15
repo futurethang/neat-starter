@@ -95,6 +95,28 @@ layout: default
       </p>
     </div>
 
+    <!-- Log to Tracker -->
+    <div class="calc-section log-section" x-show="drinks.length > 0">
+      <h3>Log to Tracker</h3>
+      <p class="help-text">Save this session to track your drinking over time</p>
+      <div class="log-form">
+        <div class="input-group">
+          <label for="logDate">Date</label>
+          <input type="date" id="logDate" x-model="logDate">
+        </div>
+        <div class="input-group">
+          <label for="logNote">Note (optional)</label>
+          <input type="text" id="logNote" x-model="logNote" placeholder="e.g., dinner party">
+        </div>
+        <button @click="logToTracker()" class="log-btn">
+          Log Session
+        </button>
+      </div>
+      <div class="log-success" x-show="logSuccess" x-transition>
+        Logged! <a href="{{ '/tracker' | url }}">View Tracker →</a>
+      </div>
+    </div>
+
     <!-- Info -->
     <div class="calc-section info-section">
       <h3>Reference</h3>
@@ -105,6 +127,9 @@ layout: default
         <li>1.5 oz of 40% spirits</li>
       </ul>
       <p class="formula">Formula: (ounces &times; ABV%) &divide; 60 = standard units</p>
+      <p class="tracker-link">
+        <a href="{{ '/tracker' | url }}">View drinking history & charts →</a>
+      </p>
     </div>
   </div>
 </div>
@@ -183,14 +208,16 @@ layout: default
   }
 
   /* Input Row */
-  .input-row {
+  .input-row, .log-form {
     display: flex;
     gap: 1rem;
     align-items: flex-end;
+    flex-wrap: wrap;
   }
 
   .input-group {
     flex: 1;
+    min-width: 120px;
   }
 
   .input-group label {
@@ -336,6 +363,45 @@ layout: default
     opacity: 0.8;
   }
 
+  /* Log Section */
+  .log-section {
+    background: rgba(99, 102, 241, 0.15);
+    border: 1px solid var(--indigo-500);
+  }
+
+  .log-section h3 {
+    color: var(--indigo-300);
+  }
+
+  .log-btn {
+    padding: 0.5rem 1.5rem;
+    background: var(--indigo-600);
+    border: none;
+    border-radius: 4px;
+    color: white;
+    cursor: pointer;
+    font-weight: 600;
+    transition: background 0.2s;
+    white-space: nowrap;
+  }
+
+  .log-btn:hover {
+    background: var(--indigo-500);
+  }
+
+  .log-success {
+    margin-top: 1rem;
+    padding: 0.75rem;
+    background: rgba(34, 197, 94, 0.2);
+    border-radius: 4px;
+    color: var(--green-300);
+  }
+
+  .log-success a {
+    color: var(--green-200);
+    font-weight: 600;
+  }
+
   /* Info Section */
   .info-section {
     background: rgba(0, 0, 0, 0.2);
@@ -359,8 +425,19 @@ layout: default
     margin-top: 1rem;
   }
 
+  .tracker-link {
+    margin-top: 1rem;
+    padding-top: 1rem;
+    border-top: 1px solid rgba(255,255,255,0.1);
+  }
+
+  .tracker-link a {
+    color: var(--cyan-300);
+    font-weight: 600;
+  }
+
   @media (max-width: 500px) {
-    .input-row {
+    .input-row, .log-form {
       flex-wrap: wrap;
     }
 
@@ -368,7 +445,7 @@ layout: default
       min-width: calc(50% - 0.5rem);
     }
 
-    .add-btn {
+    .add-btn, .log-btn {
       width: 100%;
       margin-top: 0.5rem;
     }
@@ -380,11 +457,30 @@ layout: default
 </style>
 
 <script>
+  // Shared storage key for drinking data
+  const STORAGE_KEY = 'drinkingTrackerData';
+
+  function getStoredData() {
+    try {
+      const data = localStorage.getItem(STORAGE_KEY);
+      return data ? JSON.parse(data) : [];
+    } catch (e) {
+      return [];
+    }
+  }
+
+  function saveStoredData(data) {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+  }
+
   function alcoholCalculator() {
     return {
       ounces: null,
       abv: null,
       drinks: [],
+      logDate: new Date().toISOString().split('T')[0],
+      logNote: '',
+      logSuccess: false,
 
       presets: [
         { name: 'Regular Beer', oz: 12, abv: 5, icon: '🍺' },
@@ -402,8 +498,6 @@ layout: default
       ],
 
       calculateUnits(oz, abv) {
-        // Standard US drink = 0.6 oz pure alcohol
-        // Formula: (oz * abv%) / 60 = standard units
         return (oz * abv) / 60;
       },
 
@@ -419,6 +513,7 @@ layout: default
           abv: preset.abv,
           units: units
         });
+        this.logSuccess = false;
       },
 
       addCustom() {
@@ -432,15 +527,54 @@ layout: default
           });
           this.ounces = null;
           this.abv = null;
+          this.logSuccess = false;
         }
       },
 
       removeDrink(index) {
         this.drinks.splice(index, 1);
+        this.logSuccess = false;
       },
 
       clearAll() {
         this.drinks = [];
+        this.logSuccess = false;
+      },
+
+      logToTracker() {
+        if (this.drinks.length === 0) return;
+
+        const data = getStoredData();
+
+        // Check if entry for this date already exists
+        const existingIndex = data.findIndex(d => d.date === this.logDate);
+
+        const entry = {
+          date: this.logDate,
+          drinks: Math.round(this.totalUnits * 100) / 100,
+          note: this.logNote
+        };
+
+        if (existingIndex >= 0) {
+          // Update existing entry (add to it)
+          data[existingIndex].drinks += entry.drinks;
+          if (entry.note && !data[existingIndex].note.includes(entry.note)) {
+            data[existingIndex].note = data[existingIndex].note
+              ? data[existingIndex].note + ', ' + entry.note
+              : entry.note;
+          }
+        } else {
+          data.push(entry);
+        }
+
+        // Sort by date
+        data.sort((a, b) => new Date(a.date) - new Date(b.date));
+
+        saveStoredData(data);
+
+        this.logSuccess = true;
+        this.drinks = [];
+        this.logNote = '';
       }
     };
   }
