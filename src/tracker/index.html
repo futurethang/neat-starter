@@ -63,8 +63,8 @@ layout: default
     </div>
   </div>
 
-  <!-- Charts -->
-  <div class="charts-grid" x-show="drinkingData.length > 0" x-cloak>
+  <!-- Charts - always in DOM, visibility controlled by Alpine class binding -->
+  <div class="charts-grid" :class="{ 'charts-hidden': drinkingData.length === 0 }">
     <div class="tracker-section chart-section">
       <h3>Daily Pattern</h3>
       <canvas id="dailyChart"></canvas>
@@ -184,6 +184,13 @@ layout: default
 
 <style>
   [x-cloak] { display: none !important; }
+
+  .charts-hidden {
+    visibility: hidden;
+    height: 0;
+    overflow: hidden;
+    margin: 0 !important;
+  }
 
   .tracker-page {
     max-width: 900px;
@@ -972,27 +979,17 @@ layout: default
         this.charts = {};
       },
 
-      renderCharts(retryCount = 0) {
+      renderCharts() {
+        this.destroyCharts();
+
         if (this.drinkingData.length === 0) {
-          this.destroyCharts();
           return;
         }
 
-        // Delay to ensure DOM is ready after x-show
-        setTimeout(() => {
-          const container = document.querySelector('.charts-grid');
-
-          // If container isn't visible yet, retry up to 5 times
-          if (!container || container.offsetWidth === 0) {
-            if (retryCount < 5) {
-              setTimeout(() => this.renderCharts(retryCount + 1), 100);
-            }
-            return;
-          }
-
-          this.destroyCharts();
+        // Small delay to ensure Alpine has updated the DOM
+        this.$nextTick(() => {
           this._createCharts();
-        }, retryCount === 0 ? 100 : 50);
+        });
       },
 
       _createCharts() {
