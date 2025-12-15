@@ -63,5 +63,6 @@ module.exports = function (eleventyConfig) {
       input: "src",
     },
     htmlTemplateEngine: "njk",
+    pathPrefix: process.env.GITHUB_ACTIONS ? "/neat-starter/" : "/",
   };
 };

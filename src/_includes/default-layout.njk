@@ -5,15 +5,15 @@
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{{ title }}</title>
-    <link rel="stylesheet" href="/assets/reset.css">
-    <link rel="stylesheet" href="/assets/style.css">
+    <link rel="stylesheet" href="{{ '/assets/reset.css' | url }}">
+    <link rel="stylesheet" href="{{ '/assets/style.css' | url }}">
   </head>
   <body>
     <header>
-      <a href="/">
+      <a href="{{ '/' | url }}">
         <h1>Kevin Hyde</h1>
       </a>
-      <a href="/">
+      <a href="{{ '/' | url }}">
         <svg width="4rem" height="4rem" viewbox="110 -5 140 140" class="css-1j8o68f">
           <defs id="SvgjsDefs1442"></defs>
           <g
