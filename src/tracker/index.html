@@ -680,7 +680,7 @@ layout: default
 <script>
   const STORAGE_KEY = 'drinkingTrackerData';
   const SYNC_ID_KEY = 'drinkingTrackerSyncId';
-  const JSONBLOB_API = 'https://jsonblob.com/api/jsonBlob';
+  const NPOINT_API = 'https://api.npoint.io';
 
   function getStoredData() {
     try {
@@ -825,22 +825,20 @@ layout: default
         }
       },
 
-      // Cloud Sync Methods
+      // Cloud Sync Methods (using npoint.io)
       async createSync() {
         try {
           this.syncStatus = 'syncing';
-          const response = await fetch(JSONBLOB_API, {
+          const response = await fetch(NPOINT_API, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(this.drinkingData)
+            body: JSON.stringify({ data: this.drinkingData })
           });
 
           if (response.ok) {
-            // Extract blob ID from Location header or URL
-            const location = response.headers.get('Location') || response.url;
-            const blobId = location.split('/').pop();
-            this.syncId = blobId;
-            saveSyncId(blobId);
+            const result = await response.json();
+            this.syncId = result.id;
+            saveSyncId(result.id);
             this.syncStatus = 'synced';
           } else {
             throw new Error('Failed to create sync');
@@ -857,10 +855,11 @@ layout: default
 
         try {
           this.syncStatus = 'syncing';
-          const response = await fetch(`${JSONBLOB_API}/${this.connectId.trim()}`);
+          const response = await fetch(`${NPOINT_API}/${this.connectId.trim()}`);
 
           if (response.ok) {
-            const cloudData = await response.json();
+            const result = await response.json();
+            const cloudData = result.data || result;
             this.syncId = this.connectId.trim();
             saveSyncId(this.syncId);
 
@@ -896,10 +895,10 @@ layout: default
 
         try {
           this.syncStatus = 'syncing';
-          const response = await fetch(`${JSONBLOB_API}/${this.syncId}`, {
-            method: 'PUT',
+          const response = await fetch(`${NPOINT_API}/${this.syncId}`, {
+            method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(this.drinkingData)
+            body: JSON.stringify({ data: this.drinkingData })
           });
 
           if (response.ok) {
@@ -918,10 +917,11 @@ layout: default
 
         try {
           this.syncStatus = 'syncing';
-          const response = await fetch(`${JSONBLOB_API}/${this.syncId}`);
+          const response = await fetch(`${NPOINT_API}/${this.syncId}`);
 
           if (response.ok) {
-            const cloudData = await response.json();
+            const result = await response.json();
+            const cloudData = result.data || result;
             if (Array.isArray(cloudData)) {
               this.mergeData(cloudData);
               this.$nextTick(() => this.renderCharts());
