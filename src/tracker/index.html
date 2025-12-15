@@ -63,8 +63,8 @@ layout: default
     </div>
   </div>
 
-  <!-- Charts - always in DOM, visibility controlled by Alpine class binding -->
-  <div class="charts-grid" :class="{ 'charts-hidden': drinkingData.length === 0 }">
+  <!-- Charts - NO hiding to ensure canvas always has proper dimensions for Chart.js -->
+  <div class="charts-grid">
     <div class="tracker-section chart-section">
       <h3>Daily Pattern</h3>
       <canvas id="dailyChart"></canvas>
@@ -184,13 +184,6 @@ layout: default
 
 <style>
   [x-cloak] { display: none !important; }
-
-  .charts-hidden {
-    visibility: hidden;
-    height: 0;
-    overflow: hidden;
-    margin: 0 !important;
-  }
 
   .tracker-page {
     max-width: 900px;
@@ -687,8 +680,8 @@ layout: default
 <script>
   const STORAGE_KEY = 'drinkingTrackerData';
   const SYNC_ID_KEY = 'drinkingTrackerSyncId';
-  // Using CORS proxy with JSONBlob for reliable cross-origin sync
-  const CORS_PROXY = 'https://corsproxy.io/?';
+  // Using thingproxy CORS proxy with JSONBlob for cross-origin sync
+  const CORS_PROXY = 'https://thingproxy.freeboard.io/fetch/';
   const JSONBLOB_API = 'https://jsonblob.com/api/jsonBlob';
 
   function getStoredData() {
@@ -834,42 +827,54 @@ layout: default
         }
       },
 
-      // Cloud Sync Methods (using JSONBlob via CORS proxy)
+      // Cloud Sync Methods (using JSONBlob via thingproxy CORS proxy)
       async createSync() {
         try {
           this.syncStatus = 'syncing';
-          const response = await fetch(CORS_PROXY + encodeURIComponent(JSONBLOB_API), {
+          const response = await fetch(CORS_PROXY + JSONBLOB_API, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(this.drinkingData)
           });
 
           if (response.ok) {
-            // JSONBlob returns the blob ID in the Location header or we extract from URL
-            const location = response.headers.get('Location') || response.headers.get('X-Final-Url') || '';
+            // JSONBlob returns the blob ID in various headers
+            const location = response.headers.get('Location') ||
+                           response.headers.get('X-Jsonblob') ||
+                           response.headers.get('X-Final-Url') || '';
             let blobId = location.split('/').pop();
 
-            // If no location header, try to get from response
-            if (!blobId) {
-              const text = await response.text();
-              // The response URL might contain the ID
+            // If no header, try response URL
+            if (!blobId || blobId.length < 10) {
               blobId = response.url.split('/').pop();
+            }
+
+            // Last resort: check if response contains the ID
+            if (!blobId || blobId.length < 10) {
+              try {
+                const text = await response.text();
+                // JSONBlob might return the ID in the response
+                if (text && text.length > 10 && text.length < 50) {
+                  blobId = text.trim();
+                }
+              } catch (e) {}
             }
 
             if (blobId && blobId.length > 10) {
               this.syncId = blobId;
               saveSyncId(blobId);
               this.syncStatus = 'synced';
+              alert('Sync created! Your Sync ID: ' + blobId);
             } else {
               throw new Error('Could not get sync ID from response');
             }
           } else {
-            throw new Error('Failed to create sync');
+            throw new Error('Failed to create sync: ' + response.status);
           }
         } catch (err) {
           console.error('Create sync error:', err);
           this.syncStatus = 'error';
-          alert('Failed to create sync. Please try again.');
+          alert('Failed to create sync: ' + err.message);
         }
       },
 
@@ -878,7 +883,7 @@ layout: default
 
         try {
           this.syncStatus = 'syncing';
-          const url = CORS_PROXY + encodeURIComponent(`${JSONBLOB_API}/${this.connectId.trim()}`);
+          const url = CORS_PROXY + JSONBLOB_API + '/' + this.connectId.trim();
           const response = await fetch(url);
 
           if (response.ok) {
@@ -918,7 +923,7 @@ layout: default
 
         try {
           this.syncStatus = 'syncing';
-          const url = CORS_PROXY + encodeURIComponent(`${JSONBLOB_API}/${this.syncId}`);
+          const url = CORS_PROXY + JSONBLOB_API + '/' + this.syncId;
           const response = await fetch(url, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
@@ -941,7 +946,7 @@ layout: default
 
         try {
           this.syncStatus = 'syncing';
-          const url = CORS_PROXY + encodeURIComponent(`${JSONBLOB_API}/${this.syncId}`);
+          const url = CORS_PROXY + JSONBLOB_API + '/' + this.syncId;
           const response = await fetch(url);
 
           if (response.ok) {
@@ -999,16 +1004,17 @@ layout: default
       },
 
       renderCharts() {
+        // Always destroy existing charts first
+        this.destroyCharts();
+
         if (this.drinkingData.length === 0) {
-          this.destroyCharts();
           return;
         }
 
-        // Destroy and recreate in same tick to avoid race conditions
-        this.$nextTick(() => {
-          this.destroyCharts();
+        // Use setTimeout to ensure DOM is ready
+        setTimeout(() => {
           this._createCharts();
-        });
+        }, 10);
       },
 
       _createCharts() {
