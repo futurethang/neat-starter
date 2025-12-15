@@ -687,7 +687,9 @@ layout: default
 <script>
   const STORAGE_KEY = 'drinkingTrackerData';
   const SYNC_ID_KEY = 'drinkingTrackerSyncId';
-  const JSON_STORAGE_API = 'https://extendsclass.com/api/json-storage/bin';
+  // Using CORS proxy with JSONBlob for reliable cross-origin sync
+  const CORS_PROXY = 'https://corsproxy.io/?';
+  const JSONBLOB_API = 'https://jsonblob.com/api/jsonBlob';
 
   function getStoredData() {
     try {
@@ -832,21 +834,35 @@ layout: default
         }
       },
 
-      // Cloud Sync Methods (using extendsclass.com)
+      // Cloud Sync Methods (using JSONBlob via CORS proxy)
       async createSync() {
         try {
           this.syncStatus = 'syncing';
-          const response = await fetch(JSON_STORAGE_API, {
+          const response = await fetch(CORS_PROXY + encodeURIComponent(JSONBLOB_API), {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(this.drinkingData)
           });
 
           if (response.ok) {
-            const result = await response.json();
-            this.syncId = result.id;
-            saveSyncId(result.id);
-            this.syncStatus = 'synced';
+            // JSONBlob returns the blob ID in the Location header or we extract from URL
+            const location = response.headers.get('Location') || response.headers.get('X-Final-Url') || '';
+            let blobId = location.split('/').pop();
+
+            // If no location header, try to get from response
+            if (!blobId) {
+              const text = await response.text();
+              // The response URL might contain the ID
+              blobId = response.url.split('/').pop();
+            }
+
+            if (blobId && blobId.length > 10) {
+              this.syncId = blobId;
+              saveSyncId(blobId);
+              this.syncStatus = 'synced';
+            } else {
+              throw new Error('Could not get sync ID from response');
+            }
           } else {
             throw new Error('Failed to create sync');
           }
@@ -862,7 +878,8 @@ layout: default
 
         try {
           this.syncStatus = 'syncing';
-          const response = await fetch(`${JSON_STORAGE_API}/${this.connectId.trim()}`);
+          const url = CORS_PROXY + encodeURIComponent(`${JSONBLOB_API}/${this.connectId.trim()}`);
+          const response = await fetch(url);
 
           if (response.ok) {
             const cloudData = await response.json();
@@ -901,7 +918,8 @@ layout: default
 
         try {
           this.syncStatus = 'syncing';
-          const response = await fetch(`${JSON_STORAGE_API}/${this.syncId}`, {
+          const url = CORS_PROXY + encodeURIComponent(`${JSONBLOB_API}/${this.syncId}`);
+          const response = await fetch(url, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(this.drinkingData)
@@ -923,7 +941,8 @@ layout: default
 
         try {
           this.syncStatus = 'syncing';
-          const response = await fetch(`${JSON_STORAGE_API}/${this.syncId}`);
+          const url = CORS_PROXY + encodeURIComponent(`${JSONBLOB_API}/${this.syncId}`);
+          const response = await fetch(url);
 
           if (response.ok) {
             const cloudData = await response.json();
