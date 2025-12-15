@@ -121,48 +121,19 @@ layout: default
     <p>No data yet. Add entries above or <a href="{{ '/tools' | url }}">use the calculator</a> to log drinks.</p>
   </div>
 
-  <!-- Cloud Sync -->
+  <!-- Sync via Clipboard -->
   <div class="tracker-section sync-section">
-    <h3>Cloud Sync</h3>
-
-    <!-- Not connected -->
-    <div x-show="!syncId">
-      <p class="sync-desc">Sync your data across all devices. No account needed.</p>
-      <div class="sync-options">
-        <button @click="createSync()" class="sync-btn create-btn">
-          Create New Sync
-        </button>
-        <span class="sync-or">or</span>
-        <div class="connect-form">
-          <input
-            type="text"
-            x-model="connectId"
-            placeholder="Enter Sync ID"
-            class="connect-input"
-          >
-          <button @click="connectSync()" class="sync-btn connect-btn" :disabled="!connectId">
-            Connect
-          </button>
-        </div>
-      </div>
+    <h3>Sync Between Devices</h3>
+    <p class="sync-desc">Copy your data and paste it on another device - works via email, notes, messaging apps, etc.</p>
+    <div class="sync-buttons">
+      <button @click="copyToClipboard()" class="sync-btn copy-btn">
+        📋 Copy Data to Clipboard
+      </button>
+      <button @click="pasteFromClipboard()" class="sync-btn paste-btn">
+        📥 Paste Data from Clipboard
+      </button>
     </div>
-
-    <!-- Connected -->
-    <div x-show="syncId">
-      <div class="sync-connected">
-        <div class="sync-id-display">
-          <span class="sync-id-label">Your Sync ID:</span>
-          <code class="sync-id-value" x-text="syncId"></code>
-          <button @click="copyId()" class="copy-btn" title="Copy ID">📋</button>
-        </div>
-        <p class="sync-help">Use this ID on other devices to sync your data.</p>
-        <div class="sync-actions">
-          <button @click="pushToCloud()" class="sync-btn push-btn">Push to Cloud</button>
-          <button @click="pullFromCloud()" class="sync-btn pull-btn">Pull from Cloud</button>
-          <button @click="disconnectSync()" class="sync-btn disconnect-btn">Disconnect</button>
-        </div>
-      </div>
-    </div>
+    <p class="sync-note" x-show="copySuccess" x-cloak style="color: var(--green-400);">✓ Copied! Paste this anywhere to transfer to another device.</p>
   </div>
 
   <!-- Import/Export -->
@@ -458,144 +429,43 @@ layout: default
     color: var(--gray-300);
   }
 
-  .sync-options {
+  .sync-buttons {
     display: flex;
-    align-items: center;
     gap: 1rem;
     flex-wrap: wrap;
   }
 
-  .sync-or {
-    color: var(--gray-500);
-  }
-
-  .connect-form {
-    display: flex;
-    gap: 0.5rem;
-    flex: 1;
-    min-width: 200px;
-  }
-
-  .connect-input {
-    flex: 1;
-    padding: 0.5rem;
-    background: rgba(0, 0, 0, 0.3);
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    border-radius: 4px;
-    color: var(--gray-100);
-    font-family: monospace;
-  }
-
   .sync-btn {
-    padding: 0.5rem 1rem;
+    padding: 0.75rem 1.25rem;
     border: none;
-    border-radius: 4px;
+    border-radius: 6px;
     cursor: pointer;
     font-weight: 500;
-    font-size: 0.9rem;
+    font-size: 1rem;
     transition: all 0.2s;
   }
 
-  .create-btn {
+  .sync-btn.copy-btn {
     background: var(--indigo-600);
     color: white;
   }
 
-  .create-btn:hover {
+  .sync-btn.copy-btn:hover {
     background: var(--indigo-500);
   }
 
-  .connect-btn {
+  .sync-btn.paste-btn {
     background: var(--cyan-600);
     color: white;
   }
 
-  .connect-btn:hover:not(:disabled) {
+  .sync-btn.paste-btn:hover {
     background: var(--cyan-500);
   }
 
-  .connect-btn:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-  }
-
-  .sync-connected {
-    display: flex;
-    flex-direction: column;
-    gap: 1rem;
-  }
-
-  .sync-id-display {
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-    flex-wrap: wrap;
-  }
-
-  .sync-id-label {
-    color: var(--gray-300);
-  }
-
-  .sync-id-value {
-    background: rgba(0, 0, 0, 0.4);
-    padding: 0.5rem 1rem;
-    border-radius: 4px;
-    font-size: 1.1rem;
-    color: var(--cyan-300);
-    letter-spacing: 1px;
-  }
-
-  .copy-btn {
-    background: transparent;
-    border: 1px solid var(--gray-600);
-    padding: 0.4rem 0.6rem;
-    border-radius: 4px;
-    cursor: pointer;
-    font-size: 1rem;
-  }
-
-  .copy-btn:hover {
-    background: rgba(255, 255, 255, 0.1);
-  }
-
-  .sync-help {
-    font-size: 0.85rem;
-    color: var(--gray-400);
-  }
-
-  .sync-actions {
-    display: flex;
-    gap: 0.75rem;
-    flex-wrap: wrap;
-  }
-
-  .push-btn {
-    background: var(--green-600);
-    color: white;
-  }
-
-  .push-btn:hover {
-    background: var(--green-500);
-  }
-
-  .pull-btn {
-    background: var(--cyan-600);
-    color: white;
-  }
-
-  .pull-btn:hover {
-    background: var(--cyan-500);
-  }
-
-  .disconnect-btn {
-    background: transparent;
-    border: 1px solid var(--gray-500);
-    color: var(--gray-400);
-  }
-
-  .disconnect-btn:hover {
-    border-color: var(--red-400);
-    color: var(--red-400);
+  .sync-note {
+    margin-top: 0.75rem;
+    font-size: 0.9rem;
   }
 
   /* Import/Export */
@@ -679,10 +549,6 @@ layout: default
 
 <script>
   const STORAGE_KEY = 'drinkingTrackerData';
-  const SYNC_ID_KEY = 'drinkingTrackerSyncId';
-  // Using thingproxy CORS proxy with JSONBlob for cross-origin sync
-  const CORS_PROXY = 'https://thingproxy.freeboard.io/fetch/';
-  const JSONBLOB_API = 'https://jsonblob.com/api/jsonBlob';
 
   function getStoredData() {
     try {
@@ -697,18 +563,6 @@ layout: default
     localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
   }
 
-  function getSyncId() {
-    return localStorage.getItem(SYNC_ID_KEY) || '';
-  }
-
-  function saveSyncId(id) {
-    if (id) {
-      localStorage.setItem(SYNC_ID_KEY, id);
-    } else {
-      localStorage.removeItem(SYNC_ID_KEY);
-    }
-  }
-
   function drinkingTracker() {
     return {
       drinkingData: [],
@@ -718,24 +572,16 @@ layout: default
         drinks: null,
         note: ''
       },
-      syncId: '',
-      syncStatus: 'synced',
-      connectId: '',
+      copySuccess: false,
 
-      async init() {
+      init() {
         this.drinkingData = getStoredData();
-        this.syncId = getSyncId();
 
         this.$nextTick(() => {
           if (this.drinkingData.length > 0) {
             this.renderCharts();
           }
         });
-
-        // Auto-pull from cloud on load if connected
-        if (this.syncId) {
-          await this.pullFromCloud();
-        }
       },
 
       get stats() {
@@ -787,11 +633,8 @@ layout: default
         return subset.reduce((sum, d) => sum + d.drinks, 0) / subset.length;
       },
 
-      async saveAndSync() {
+      saveData() {
         saveStoredData(this.drinkingData);
-        if (this.syncId) {
-          await this.pushToCloud();
-        }
       },
 
       async addEntry() {
@@ -811,7 +654,7 @@ layout: default
         }
 
         this.drinkingData.sort((a, b) => new Date(a.date) - new Date(b.date));
-        await this.saveAndSync();
+        this.saveData();
 
         this.newEntry.drinks = null;
         this.newEntry.note = '';
@@ -822,180 +665,59 @@ layout: default
       async deleteEntry(index) {
         if (confirm('Delete this entry?')) {
           this.drinkingData.splice(index, 1);
-          await this.saveAndSync();
+          this.saveData();
           this.$nextTick(() => this.renderCharts());
         }
       },
 
-      // Cloud Sync Methods (using JSONBlob via thingproxy CORS proxy)
-      async createSync() {
+      // Clipboard-based sync methods
+      async copyToClipboard() {
         try {
-          this.syncStatus = 'syncing';
-          const response = await fetch(CORS_PROXY + JSONBLOB_API, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(this.drinkingData)
-          });
-
-          if (response.ok) {
-            // JSONBlob returns the blob ID in various headers
-            const location = response.headers.get('Location') ||
-                           response.headers.get('X-Jsonblob') ||
-                           response.headers.get('X-Final-Url') || '';
-            let blobId = location.split('/').pop();
-
-            // If no header, try response URL
-            if (!blobId || blobId.length < 10) {
-              blobId = response.url.split('/').pop();
-            }
-
-            // Last resort: check if response contains the ID
-            if (!blobId || blobId.length < 10) {
-              try {
-                const text = await response.text();
-                // JSONBlob might return the ID in the response
-                if (text && text.length > 10 && text.length < 50) {
-                  blobId = text.trim();
-                }
-              } catch (e) {}
-            }
-
-            if (blobId && blobId.length > 10) {
-              this.syncId = blobId;
-              saveSyncId(blobId);
-              this.syncStatus = 'synced';
-              alert('Sync created! Your Sync ID: ' + blobId);
-            } else {
-              throw new Error('Could not get sync ID from response');
-            }
-          } else {
-            throw new Error('Failed to create sync: ' + response.status);
-          }
+          const dataStr = JSON.stringify(this.drinkingData);
+          await navigator.clipboard.writeText(dataStr);
+          this.copySuccess = true;
+          setTimeout(() => { this.copySuccess = false; }, 3000);
         } catch (err) {
-          console.error('Create sync error:', err);
-          this.syncStatus = 'error';
-          alert('Failed to create sync: ' + err.message);
+          alert('Failed to copy. Try using Export JSON instead.');
         }
       },
 
-      async connectSync() {
-        if (!this.connectId.trim()) return;
-
+      async pasteFromClipboard() {
         try {
-          this.syncStatus = 'syncing';
-          const url = CORS_PROXY + JSONBLOB_API + '/' + this.connectId.trim();
-          const response = await fetch(url);
+          const text = await navigator.clipboard.readText();
+          const imported = JSON.parse(text);
 
-          if (response.ok) {
-            const cloudData = await response.json();
-            this.syncId = this.connectId.trim();
-            saveSyncId(this.syncId);
-
-            // Merge cloud data with local
-            if (Array.isArray(cloudData) && cloudData.length > 0) {
-              if (this.drinkingData.length > 0) {
-                if (confirm(`Found ${cloudData.length} entries in cloud. Merge with your ${this.drinkingData.length} local entries?`)) {
-                  this.mergeData(cloudData);
-                }
-              } else {
-                this.drinkingData = cloudData;
-                saveStoredData(this.drinkingData);
-              }
-            }
-
-            this.connectId = '';
-            this.syncStatus = 'synced';
-            this.$nextTick(() => this.renderCharts());
-          } else if (response.status === 404) {
-            throw new Error('Sync ID not found');
-          } else {
-            throw new Error('Failed to connect');
+          if (!Array.isArray(imported)) {
+            throw new Error('Invalid data format');
           }
-        } catch (err) {
-          console.error('Connect sync error:', err);
-          this.syncStatus = 'error';
-          alert('Failed to connect: ' + err.message);
-        }
-      },
 
-      async pushToCloud() {
-        if (!this.syncId) return;
-
-        try {
-          this.syncStatus = 'syncing';
-          const url = CORS_PROXY + JSONBLOB_API + '/' + this.syncId;
-          const response = await fetch(url, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(this.drinkingData)
-          });
-
-          if (response.ok) {
-            this.syncStatus = 'synced';
-          } else {
-            throw new Error('Failed to push');
+          if (imported.length === 0) {
+            alert('No data found in clipboard.');
+            return;
           }
-        } catch (err) {
-          console.error('Push error:', err);
-          this.syncStatus = 'error';
-        }
-      },
 
-      async pullFromCloud() {
-        if (!this.syncId) return;
+          const action = this.drinkingData.length > 0
+            ? confirm(`Found ${imported.length} entries. Merge with your ${this.drinkingData.length} existing entries?\n\nOK = Merge, Cancel = Replace all`)
+            : false;
 
-        try {
-          this.syncStatus = 'syncing';
-          const url = CORS_PROXY + JSONBLOB_API + '/' + this.syncId;
-          const response = await fetch(url);
-
-          if (response.ok) {
-            const cloudData = await response.json();
-            if (Array.isArray(cloudData)) {
-              this.mergeData(cloudData);
-              this.$nextTick(() => this.renderCharts());
-            }
-            this.syncStatus = 'synced';
+          if (action || this.drinkingData.length === 0) {
+            // Merge: imported data wins for same date
+            const merged = new Map();
+            this.drinkingData.forEach(entry => merged.set(entry.date, entry));
+            imported.forEach(entry => merged.set(entry.date, entry));
+            this.drinkingData = Array.from(merged.values())
+              .sort((a, b) => new Date(a.date) - new Date(b.date));
           } else {
-            throw new Error('Failed to pull');
+            // Replace all
+            this.drinkingData = imported.sort((a, b) => new Date(a.date) - new Date(b.date));
           }
+
+          this.saveData();
+          this.$nextTick(() => this.renderCharts());
+          alert(`Successfully imported ${imported.length} entries!`);
         } catch (err) {
-          console.error('Pull error:', err);
-          this.syncStatus = 'error';
+          alert('Failed to paste. Make sure you copied valid tracker data.\n\nError: ' + err.message);
         }
-      },
-
-      mergeData(cloudData) {
-        // Merge: cloud data wins for same date, keep unique entries from both
-        const merged = new Map();
-
-        // Add local data first
-        this.drinkingData.forEach(entry => {
-          merged.set(entry.date, entry);
-        });
-
-        // Cloud data overwrites local for same dates
-        cloudData.forEach(entry => {
-          merged.set(entry.date, entry);
-        });
-
-        this.drinkingData = Array.from(merged.values())
-          .sort((a, b) => new Date(a.date) - new Date(b.date));
-
-        saveStoredData(this.drinkingData);
-      },
-
-      disconnectSync() {
-        if (confirm('Disconnect from cloud sync? Your local data will be kept.')) {
-          this.syncId = '';
-          saveSyncId('');
-          this.syncStatus = 'synced';
-        }
-      },
-
-      copyId() {
-        navigator.clipboard.writeText(this.syncId);
-        alert('Sync ID copied to clipboard!');
       },
 
       destroyCharts() {
@@ -1191,7 +913,7 @@ layout: default
       async clearAllData() {
         if (confirm('Delete ALL tracking data? This cannot be undone.')) {
           this.drinkingData = [];
-          await this.saveAndSync();
+          this.saveData();
           this.destroyCharts();
         }
       }
