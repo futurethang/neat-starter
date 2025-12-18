@@ -890,16 +890,20 @@ layout: default
         if (!file) return;
 
         const reader = new FileReader();
-        reader.onload = async (e) => {
+        reader.onload = (e) => {
           try {
             const imported = JSON.parse(e.target.result);
             if (Array.isArray(imported)) {
               if (confirm(`Import ${imported.length} entries? This will merge with existing data.`)) {
-                this.mergeData(imported);
-                if (this.syncId) {
-                  await this.pushToCloud();
-                }
+                // Merge: imported data wins for same date
+                const merged = new Map();
+                this.drinkingData.forEach(entry => merged.set(entry.date, entry));
+                imported.forEach(entry => merged.set(entry.date, entry));
+                this.drinkingData = Array.from(merged.values())
+                  .sort((a, b) => new Date(a.date) - new Date(b.date));
+                this.saveData();
                 this.$nextTick(() => this.renderCharts());
+                alert(`Successfully imported ${imported.length} entries!`);
               }
             }
           } catch (err) {
